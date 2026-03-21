@@ -1,0 +1,77 @@
+# =========================
+# Environment files
+# =========================
+.env
+.env.*
+!.env.example
+
+# =========================
+# Node modules
+# =========================
+node_modules/
+Client/node_modules/
+Server/node_modules/
+
+# =========================
+# Logs
+# =========================
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# =========================
+# Build folders
+# =========================
+dist/
+build/
+Client/dist/
+Client/build/
+Server/dist/
+Server/build/
+
+# =========================
+# Cache & temp files
+# =========================
+.cache/
+.tmp/
+.temp/
+*.tmp
+
+# =========================
+# OS files
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# IDE / Editor files
+# =========================
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# =========================
+# Dependency lock (optional)
+# Uncomment if you DON'T want to track lock files
+# =========================
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+# =========================
+# Deployment configs (optional)
+# =========================
+# If these contain secrets, ignore them
+# =========================
+# render.yaml
+# vercel.json
+
+# =========================
+# Misc
+# =========================
+coverage/
+*.tgz
