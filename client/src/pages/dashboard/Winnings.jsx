@@ -95,7 +95,7 @@ export default function DashboardWinnings() {
 
       {error && (
         <div className="rounded-[2rem] border border-rose-200 bg-rose-50 p-5 text-rose-700 shadow-[0_20px_70px_rgba(244,63,94,0.12)]">
-          {error}
+          {error.message || error}
         </div>
       )}
 

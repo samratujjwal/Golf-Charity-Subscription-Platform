@@ -106,7 +106,7 @@ export default function DashboardScores() {
 
             {error && (
               <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                {error}
+                {error.message || error}
               </div>
             )}
 
