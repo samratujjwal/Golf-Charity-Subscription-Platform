@@ -162,7 +162,7 @@ router.put(
   "/winning/:id/reject",
   validateRequest(winningIdSchema),
   adminController.rejectWinning,
-); // NEW
+);
 router.put(
   "/winning/:id/pay",
   validateRequest(winningIdSchema),

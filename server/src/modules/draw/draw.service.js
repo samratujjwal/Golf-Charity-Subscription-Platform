@@ -1,6 +1,7 @@
-import mongoose from 'mongoose';
-import { logger } from '../../config/logger.js';
-import { ApiError } from '../../utils/ApiError.js';
+import mongoose from "mongoose";
+import { logger } from "../../config/logger.js";
+import { ApiError } from "../../utils/ApiError.js";
+import { emailService } from "../notifications/email.service.js";
 
 const DRAW_NUMBER_COUNT = 5;
 const DRAW_MIN_NUMBER = 1;
@@ -15,14 +16,14 @@ export class DrawService {
     const config = await this.drawRepository.getConfig();
 
     return {
-      type: config?.type || 'random',
+      type: config?.type || "random",
       updatedAt: config?.updatedAt || null,
     };
   }
 
   async updateDrawConfig(type) {
-    if (!['random', 'algorithm'].includes(type)) {
-      throw new ApiError(400, 'Draw type must be either random or algorithm');
+    if (!["random", "algorithm"].includes(type)) {
+      throw new ApiError(400, "Draw type must be either random or algorithm");
     }
 
     const config = await this.drawRepository.updateConfig(type);
@@ -30,35 +31,78 @@ export class DrawService {
     return {
       type: config.type,
       updatedAt: config.updatedAt,
-      message: 'Draw configuration updated successfully',
+      message: "Draw configuration updated successfully",
     };
   }
 
   async publishCurrentDraw() {
     const { month, year } = this.getCurrentCycle();
-    const currentDraw = await this.drawRepository.getDrawByMonthYear(month, year);
+    const currentDraw = await this.drawRepository.getDrawByMonthYear(
+      month,
+      year,
+    );
 
     if (!currentDraw) {
-      throw new ApiError(404, 'No draw exists for the current month');
+      throw new ApiError(404, "No draw exists for the current month");
     }
 
-    if (currentDraw.status !== 'completed') {
-      throw new ApiError(409, 'Draw must be run before publishing results');
+    if (currentDraw.status !== "completed") {
+      throw new ApiError(409, "Draw must be run before publishing results");
     }
 
     if (currentDraw.publishedAt) {
-      throw new ApiError(409, 'Draw results have already been published');
+      throw new ApiError(409, "Draw results have already been published");
     }
 
-    const publishedDraw = await this.drawRepository.publishDraw(currentDraw._id, new Date());
+    const publishedDraw = await this.drawRepository.publishDraw(
+      currentDraw._id,
+      new Date(),
+    );
 
-    logger.info({ drawId: currentDraw._id.toString(), month, year }, 'Monthly draw published');
+    logger.info(
+      { drawId: currentDraw._id.toString(), month, year },
+      "Monthly draw published",
+    );
+
+    // Email: send draw results to all active subscribers
+    try {
+      const activeSubscriptions =
+        await this.drawRepository.getActiveSubscriptionsWithUsers();
+
+      await Promise.allSettled(
+        activeSubscriptions.map(async (sub) => {
+          const user = sub.userId;
+          if (!user?.email) return;
+
+          const scoreDoc = await this.drawRepository.getUserScoreByUserId(
+            user._id,
+          );
+          const userScores = scoreDoc?.scores || [];
+          const result = this.calculateMatches(
+            userScores,
+            publishedDraw.numbers,
+          );
+
+          await emailService.sendDrawResults({
+            to: user.email,
+            userName: user.name,
+            month,
+            year,
+            drawNumbers: publishedDraw.numbers,
+            matchCount: result.matchCount,
+            isWinner: result.matchCount >= 3,
+          });
+        }),
+      );
+    } catch (_) {
+      /* non-fatal */
+    }
 
     return this.serializeDraw(publishedDraw);
   }
 
   async getLatestDrawForUser(userId) {
-    this.validateObjectId(userId, 'Invalid user id');
+    this.validateObjectId(userId, "Invalid user id");
 
     const latestDraw = await this.drawRepository.getLatestDraw();
 
@@ -66,10 +110,14 @@ export class DrawService {
       return null;
     }
 
-    const scoreDocument = await this.drawRepository.getUserScoreByUserId(userId);
+    const scoreDocument =
+      await this.drawRepository.getUserScoreByUserId(userId);
     const userScores = scoreDocument?.scores || [];
     const result = this.buildUserResult(userScores, latestDraw.numbers);
-    const storedWinning = await this.drawRepository.findWinningByUserAndDraw(userId, latestDraw._id);
+    const storedWinning = await this.drawRepository.findWinningByUserAndDraw(
+      userId,
+      latestDraw._id,
+    );
 
     return {
       draw: this.serializeDraw(latestDraw),
@@ -80,27 +128,33 @@ export class DrawService {
         isWinner: result.matchCount >= 3,
         winningStatus: storedWinning?.status || null,
         prizeAmount: storedWinning?.prizeAmount || 0,
-        proofImage: storedWinning?.proofImage || '',
+        proofImage: storedWinning?.proofImage || "",
       },
     };
   }
 
-  async createDraw({ type, strategy = 'most_frequent' } = {}) {
+  async createDraw({ type, strategy = "most_frequent" } = {}) {
     const { month, year } = this.getCurrentCycle();
     const configuredType = type || (await this.getDrawConfig()).type;
 
-    if (!['random', 'algorithm'].includes(configuredType)) {
-      throw new ApiError(400, 'Draw type must be either random or algorithm');
+    if (!["random", "algorithm"].includes(configuredType)) {
+      throw new ApiError(400, "Draw type must be either random or algorithm");
     }
 
-    if (!['most_frequent', 'least_frequent'].includes(strategy)) {
-      throw new ApiError(400, 'Strategy must be either most_frequent or least_frequent');
+    if (!["most_frequent", "least_frequent"].includes(strategy)) {
+      throw new ApiError(
+        400,
+        "Strategy must be either most_frequent or least_frequent",
+      );
     }
 
-    const existingDraw = await this.drawRepository.getDrawByMonthYear(month, year);
+    const existingDraw = await this.drawRepository.getDrawByMonthYear(
+      month,
+      year,
+    );
 
     if (existingDraw) {
-      throw new ApiError(409, 'A draw already exists for the current month');
+      throw new ApiError(409, "A draw already exists for the current month");
     }
 
     const numbers = await this.generateDrawNumbers(configuredType, strategy);
@@ -109,54 +163,63 @@ export class DrawService {
       year,
       numbers,
       type: configuredType,
-      status: 'pending',
+      status: "pending",
       publishedAt: null,
     });
 
-    logger.info({ month, year, type: configuredType, numbers }, 'Monthly draw created');
+    logger.info(
+      { month, year, type: configuredType, numbers },
+      "Monthly draw created",
+    );
 
     return this.serializeDraw(draw);
   }
 
-  async simulateDraw({ type, strategy = 'most_frequent', drawId } = {}) {
+  async simulateDraw({ type, strategy = "most_frequent", drawId } = {}) {
     let draw;
 
     if (drawId) {
-      this.validateObjectId(drawId, 'Invalid draw id');
+      this.validateObjectId(drawId, "Invalid draw id");
       const storedDraw = await this.drawRepository.getDrawById(drawId);
 
       if (!storedDraw) {
-        throw new ApiError(404, 'Draw not found');
+        throw new ApiError(404, "Draw not found");
       }
 
       draw = storedDraw;
     } else {
       const configuredType = type || (await this.getDrawConfig()).type;
 
-      if (!['random', 'algorithm'].includes(configuredType)) {
-        throw new ApiError(400, 'Draw type must be either random or algorithm');
+      if (!["random", "algorithm"].includes(configuredType)) {
+        throw new ApiError(400, "Draw type must be either random or algorithm");
       }
 
-      if (!['most_frequent', 'least_frequent'].includes(strategy)) {
-        throw new ApiError(400, 'Strategy must be either most_frequent or least_frequent');
+      if (!["most_frequent", "least_frequent"].includes(strategy)) {
+        throw new ApiError(
+          400,
+          "Strategy must be either most_frequent or least_frequent",
+        );
       }
 
       const { month, year } = this.getCurrentCycle();
 
       draw = {
-        _id: 'simulation',
+        _id: "simulation",
         month,
         year,
         numbers: await this.generateDrawNumbers(configuredType, strategy),
         type: configuredType,
-        status: 'pending',
+        status: "pending",
         publishedAt: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
     }
 
-    const evaluation = await this.evaluateDrawAgainstScores(draw.numbers, draw._id === 'simulation' ? null : draw._id);
+    const evaluation = await this.evaluateDrawAgainstScores(
+      draw.numbers,
+      draw._id === "simulation" ? null : draw._id,
+    );
 
     return {
       draw: this.serializeDraw(draw),
@@ -170,17 +233,23 @@ export class DrawService {
 
   async runCurrentDraw() {
     const { month, year } = this.getCurrentCycle();
-    const currentDraw = await this.drawRepository.getDrawByMonthYear(month, year);
+    const currentDraw = await this.drawRepository.getDrawByMonthYear(
+      month,
+      year,
+    );
 
     if (!currentDraw) {
-      throw new ApiError(404, 'No draw exists for the current month');
+      throw new ApiError(404, "No draw exists for the current month");
     }
 
-    if (currentDraw.status === 'completed') {
-      throw new ApiError(409, 'This month\'s draw has already been completed');
+    if (currentDraw.status === "completed") {
+      throw new ApiError(409, "This month's draw has already been completed");
     }
 
-    const evaluation = await this.evaluateDrawAgainstScores(currentDraw.numbers, currentDraw._id);
+    const evaluation = await this.evaluateDrawAgainstScores(
+      currentDraw.numbers,
+      currentDraw._id,
+    );
 
     await this.drawRepository.bulkUpsertWinnings(
       evaluation.winners.map((winner) => ({
@@ -188,14 +257,45 @@ export class DrawService {
         drawId: currentDraw._id,
         matchCount: winner.matchCount,
         prizeAmount: 0,
-        status: 'pending',
-        proofImage: '',
+        status: "pending",
+        proofImage: "",
       })),
     );
 
-    const updatedDraw = await this.drawRepository.updateDrawStatus(currentDraw._id, 'completed');
+    const updatedDraw = await this.drawRepository.updateDrawStatus(
+      currentDraw._id,
+      "completed",
+    );
 
-    logger.info({ drawId: currentDraw._id.toString(), month, year, winners: evaluation.winners.length }, 'Monthly draw executed');
+    logger.info(
+      {
+        drawId: currentDraw._id.toString(),
+        month,
+        year,
+        winners: evaluation.winners.length,
+      },
+      "Monthly draw executed",
+    );
+
+    // Email: send winner alerts immediately
+    try {
+      await Promise.allSettled(
+        evaluation.winners.map(async (winner) => {
+          const userDoc = await this.drawRepository.getUserById(winner.user.id);
+          if (userDoc?.email) {
+            await emailService.sendWinnerAlert({
+              to: userDoc.email,
+              userName: userDoc.name,
+              matchCount: winner.matchCount,
+              month,
+              year,
+            });
+          }
+        }),
+      );
+    } catch (_) {
+      /* non-fatal */
+    }
 
     return {
       draw: this.serializeDraw(updatedDraw),
@@ -206,8 +306,8 @@ export class DrawService {
     };
   }
 
-  async generateDrawNumbers(type, strategy = 'most_frequent') {
-    if (type === 'random') {
+  async generateDrawNumbers(type, strategy = "most_frequent") {
+    if (type === "random") {
       return this.generateRandomNumbers();
     }
 
@@ -222,7 +322,7 @@ export class DrawService {
     });
 
     const sortedCandidates = [...frequencyMap.entries()].sort((left, right) => {
-      if (strategy === 'least_frequent') {
+      if (strategy === "least_frequent") {
         if (left[1] !== right[1]) {
           return left[1] - right[1];
         }
@@ -251,7 +351,9 @@ export class DrawService {
 
     if (selected.length < DRAW_NUMBER_COUNT) {
       const fillerNumbers = this.generateRandomNumbers(selected);
-      selected.push(...fillerNumbers.slice(0, DRAW_NUMBER_COUNT - selected.length));
+      selected.push(
+        ...fillerNumbers.slice(0, DRAW_NUMBER_COUNT - selected.length),
+      );
     }
 
     return [...selected].sort((left, right) => left - right);
@@ -259,7 +361,9 @@ export class DrawService {
 
   calculateMatches(userScores, drawNumbers) {
     const normalizedDrawNumbers = new Set(drawNumbers.map(Number));
-    const uniqueUserNumbers = [...new Set(userScores.map((score) => Number(score.value)))];
+    const uniqueUserNumbers = [
+      ...new Set(userScores.map((score) => Number(score.value))),
+    ];
     const matchedNumbers = uniqueUserNumbers
       .filter((value) => normalizedDrawNumbers.has(value))
       .sort((left, right) => left - right);
@@ -283,9 +387,11 @@ export class DrawService {
     const winners = [];
 
     scoreDocuments.forEach((document) => {
-      const userId = document.userId?._id ? document.userId._id.toString() : document.userId.toString();
-      const userName = document.userId?.name || 'Unknown user';
-      const userEmail = document.userId?.email || '';
+      const userId = document.userId?._id
+        ? document.userId._id.toString()
+        : document.userId.toString();
+      const userName = document.userId?.name || "Unknown user";
+      const userEmail = document.userId?.email || "";
       const result = this.calculateMatches(document.scores || [], drawNumbers);
 
       distribution[result.matchCount] += 1;
@@ -305,7 +411,11 @@ export class DrawService {
       }
     });
 
-    winners.sort((left, right) => right.matchCount - left.matchCount || left.user.name.localeCompare(right.user.name));
+    winners.sort(
+      (left, right) =>
+        right.matchCount - left.matchCount ||
+        left.user.name.localeCompare(right.user.name),
+    );
 
     return {
       winners,
@@ -331,7 +441,8 @@ export class DrawService {
     const result = [...existingNumbers];
 
     while (result.length < DRAW_NUMBER_COUNT) {
-      const candidate = Math.floor(Math.random() * DRAW_MAX_NUMBER) + DRAW_MIN_NUMBER;
+      const candidate =
+        Math.floor(Math.random() * DRAW_MAX_NUMBER) + DRAW_MIN_NUMBER;
 
       if (!result.includes(candidate)) {
         result.push(candidate);
