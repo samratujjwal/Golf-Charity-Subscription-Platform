@@ -117,6 +117,8 @@ select:focus-visible {
   background: linear-gradient(180deg, rgba(30, 41, 59, 0.96), rgba(15, 23, 42, 0.94));
   border-radius: 16px;
   box-shadow: 0 24px 60px rgba(2, 6, 23, 0.42);
+  min-width: 0;
+  flex-shrink: 0;
 }
 
 .surface-muted {
