@@ -1,15 +1,15 @@
-import { api } from './api';
+import { api } from "./api";
 
 export function getAdminDashboard() {
-  return api.get('/admin/dashboard');
+  return api.get("/admin/dashboard");
 }
 
 export function getAdminAnalytics() {
-  return api.get('/admin/analytics');
+  return api.get("/admin/analytics");
 }
 
 export function getAdminUsers(params = {}) {
-  return api.get('/admin/users', { params });
+  return api.get("/admin/users", { params });
 }
 
 export function updateAdminUser(userId, payload) {
@@ -29,7 +29,7 @@ export function updateUserRole(userId, role) {
 }
 
 export function getAdminSubscriptions(params = {}) {
-  return api.get('/admin/subscriptions', { params });
+  return api.get("/admin/subscriptions", { params });
 }
 
 export function updateAdminSubscriptionStatus(subscriptionId, status) {
@@ -37,39 +37,39 @@ export function updateAdminSubscriptionStatus(subscriptionId, status) {
 }
 
 export function getAdminDraws(params = {}) {
-  return api.get('/admin/draws', { params });
+  return api.get("/admin/draws", { params });
 }
 
 export function getAdminDrawConfig() {
-  return api.get('/admin/draw/config');
+  return api.get("/admin/draw/config");
 }
 
 export function updateAdminDrawConfig(type) {
-  return api.put('/admin/draw/config', { type });
+  return api.put("/admin/draw/config", { type });
 }
 
 export function createAdminDraw(payload) {
-  return api.post('/admin/draws/create', payload);
+  return api.post("/admin/draws/create", payload);
 }
 
 export function simulateAdminDraw(payload) {
-  return api.post('/admin/draws/simulate', payload);
+  return api.post("/admin/draws/simulate", payload);
 }
 
 export function runAdminDraw() {
-  return api.post('/admin/draws/run');
+  return api.post("/admin/draws/run");
 }
 
 export function publishAdminDraw() {
-  return api.post('/admin/draw/publish');
+  return api.post("/admin/draw/publish");
 }
 
 export function getAdminCharities(params = {}) {
-  return api.get('/admin/charity', { params });
+  return api.get("/admin/charity", { params });
 }
 
 export function createAdminCharity(payload) {
-  return api.post('/admin/charity', payload);
+  return api.post("/admin/charity", payload);
 }
 
 export function updateAdminCharity(charityId, payload) {
@@ -81,7 +81,7 @@ export function deleteAdminCharity(charityId) {
 }
 
 export function getAdminWinnings(params = {}) {
-  return api.get('/admin/winnings', { params });
+  return api.get("/admin/winnings", { params });
 }
 
 export function getAdminPrizePool(drawId) {
@@ -94,6 +94,11 @@ export function distributeAdminPrizes(drawId) {
 
 export function verifyAdminWinning(winningId) {
   return api.put(`/admin/winning/${winningId}/verify`);
+}
+
+// NEW: Reject a winning — admin found proof invalid
+export function rejectAdminWinning(winningId) {
+  return api.put(`/admin/winning/${winningId}/reject`);
 }
 
 export function payAdminWinning(winningId) {

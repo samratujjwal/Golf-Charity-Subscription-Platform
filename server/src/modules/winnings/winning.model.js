@@ -1,16 +1,16 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const winningSchema = new mongoose.Schema(
   {
     userId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
+      ref: "User",
       required: true,
       index: true,
     },
     drawId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Draw',
+      ref: "Draw",
       required: true,
       index: true,
     },
@@ -27,13 +27,14 @@ const winningSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['pending', 'verified', 'paid'],
-      default: 'pending',
+      // Added 'rejected' — admin can reject invalid proof, user can re-upload
+      enum: ["pending", "verified", "paid", "rejected"],
+      default: "pending",
       index: true,
     },
     proofImage: {
       type: String,
-      default: '',
+      default: "",
       trim: true,
     },
   },
@@ -43,7 +44,13 @@ const winningSchema = new mongoose.Schema(
   },
 );
 
-winningSchema.index({ userId: 1, drawId: 1 }, { unique: true, name: 'unique_user_draw_winning' });
-winningSchema.index({ drawId: 1, status: 1 }, { name: 'draw_status_winning_idx' });
+winningSchema.index(
+  { userId: 1, drawId: 1 },
+  { unique: true, name: "unique_user_draw_winning" },
+);
+winningSchema.index(
+  { drawId: 1, status: 1 },
+  { name: "draw_status_winning_idx" },
+);
 
-export const WinningModel = mongoose.model('Winning', winningSchema);
+export const WinningModel = mongoose.model("Winning", winningSchema);

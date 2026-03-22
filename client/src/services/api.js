@@ -1,13 +1,17 @@
-import axios from 'axios';
-import { clearAccessToken, getAccessToken, setAccessToken } from '../utils/authStore';
+import axios from "axios";
+import {
+  clearAccessToken,
+  getAccessToken,
+  setAccessToken,
+} from "../utils/authStore";
 
-const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+const baseURL = import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
 
 const defaultConfig = {
   baseURL,
   withCredentials: true,
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
   timeout: 10000,
 };
@@ -43,9 +47,14 @@ export function setupAuthInterceptors({ refreshToken, onUnauthorized }) {
     async (error) => {
       const originalRequest = error.config;
       const statusCode = error.response?.status;
-      const isRefreshEndpoint = originalRequest?.url?.includes('/auth/refresh');
+      const isRefreshEndpoint = originalRequest?.url?.includes("/auth/refresh");
 
-      if (statusCode !== 401 || !originalRequest || originalRequest._retry || isRefreshEndpoint) {
+      if (
+        statusCode !== 401 ||
+        !originalRequest ||
+        originalRequest._retry ||
+        isRefreshEndpoint
+      ) {
         throw error;
       }
 
@@ -87,34 +96,34 @@ export function setupAuthInterceptors({ refreshToken, onUnauthorized }) {
 
 export const healthApi = {
   async getStatus() {
-    return api.get('/health');
+    return api.get("/health");
   },
 };
 
 export const authApi = {
   async register(payload) {
-    return publicApi.post('/auth/register', payload);
+    return publicApi.post("/auth/register", payload);
   },
   async login(payload) {
-    return publicApi.post('/auth/login', payload);
+    return publicApi.post("/auth/login", payload);
   },
   async logout() {
-    return api.post('/auth/logout');
+    return api.post("/auth/logout");
   },
   async refresh() {
-    return publicApi.post('/auth/refresh');
+    return publicApi.post("/auth/refresh");
   },
   async me() {
-    return api.get('/auth/me');
+    return api.get("/auth/me");
   },
 };
 
 export const subscriptionApi = {
   async createCheckoutSession(payload) {
-    return api.post('/subscription/create-checkout-session', payload);
+    return api.post("/subscription/create-checkout-session", payload);
   },
-  async current() {
-    return api.get('/subscription/current');
+  // FIX Bug 13: accept config so callers can pass { params: { session_id } }
+  async current(config = {}) {
+    return api.get("/subscription/current", config);
   },
 };
-

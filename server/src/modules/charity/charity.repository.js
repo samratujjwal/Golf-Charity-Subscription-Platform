@@ -1,5 +1,7 @@
-import { CharityModel } from '../charities/charity.model.js';
-import { AuthModel } from '../auth/auth.model.js';
+import { CharityModel } from "../charities/charity.model.js";
+import { AuthModel } from "../auth/auth.model.js";
+import { SubscriptionModel } from "../subscriptions/subscription.model.js";
+import { DonationModel } from "./donation.model.js";
 
 export class CharityRepository {
   async getAllCharities({ search, featuredOnly }) {
@@ -14,7 +16,11 @@ export class CharityRepository {
     }
 
     return CharityModel.find(filter)
-      .sort(search ? { score: { $meta: 'textScore' }, isFeatured: -1 } : { isFeatured: -1, totalDonations: -1, createdAt: -1 })
+      .sort(
+        search
+          ? { score: { $meta: "textScore" }, isFeatured: -1 }
+          : { isFeatured: -1, totalDonations: -1, createdAt: -1 },
+      )
       .lean()
       .exec();
   }
@@ -25,7 +31,7 @@ export class CharityRepository {
 
   async findCharityByName(name, excludeId = null) {
     const filter = {
-      name: new RegExp(`^${this.escapeRegex(name)}$`, 'i'),
+      name: new RegExp(`^${this.escapeRegex(name)}$`, "i"),
     };
 
     if (excludeId) {
@@ -40,7 +46,13 @@ export class CharityRepository {
   }
 
   async updateCharity(charityId, payload) {
-    return CharityModel.findByIdAndUpdate(charityId, { $set: payload }, { new: true }).lean().exec();
+    return CharityModel.findByIdAndUpdate(
+      charityId,
+      { $set: payload },
+      { new: true },
+    )
+      .lean()
+      .exec();
   }
 
   async deleteCharity(charityId) {
@@ -58,10 +70,37 @@ export class CharityRepository {
   }
 
   async updateUserCharity(userId, charityId) {
-    return AuthModel.findByIdAndUpdate(userId, { charityId }, { new: true }).lean().exec();
+    return AuthModel.findByIdAndUpdate(userId, { charityId }, { new: true })
+      .lean()
+      .exec();
+  }
+
+  // NEW: Update the charityPercentage on the user's active subscription
+  async updateActiveSubscriptionCharityPercentage(userId, percentage) {
+    return SubscriptionModel.findOneAndUpdate(
+      { userId, status: "active" },
+      { $set: { charityPercentage: percentage } },
+      { new: true },
+    )
+      .lean()
+      .exec();
+  }
+
+  // NEW: Create a direct donation record
+  async createDonation(payload) {
+    return DonationModel.create(payload);
+  }
+
+  // NEW: Get all donations made by a user
+  async getUserDonations(userId) {
+    return DonationModel.find({ userId })
+      .populate({ path: "charityId", select: "name image totalDonations" })
+      .sort({ createdAt: -1 })
+      .lean()
+      .exec();
   }
 
   escapeRegex(value) {
-    return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   }
 }

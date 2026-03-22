@@ -1,9 +1,15 @@
-import mongoose from 'mongoose';
-import { CharityService } from '../charity/charity.service.js';
-import { ApiError } from '../../utils/ApiError.js';
+import mongoose from "mongoose";
+import { ApiError } from "../../utils/ApiError.js";
 
 export class AdminService {
-  constructor(adminRepository, analyticsService, drawService, winningService, scoreService, charityService) {
+  constructor(
+    adminRepository,
+    analyticsService,
+    drawService,
+    winningService,
+    scoreService,
+    charityService,
+  ) {
     this.adminRepository = adminRepository;
     this.analyticsService = analyticsService;
     this.drawService = drawService;
@@ -25,7 +31,7 @@ export class AdminService {
     const result = await this.adminRepository.listUsers({
       page,
       limit,
-      search: query.search?.trim() || '',
+      search: query.search?.trim() || "",
     });
 
     return {
@@ -35,58 +41,46 @@ export class AdminService {
   }
 
   async updateUserProfile(userId, payload) {
-    this.validateObjectId(userId, 'Invalid user id');
+    this.validateObjectId(userId, "Invalid user id");
 
     const existingUser = await this.adminRepository.getUserById(userId);
-
-    if (!existingUser) {
-      throw new ApiError(404, 'User not found');
-    }
-
-    const normalizedName = payload.name.trim();
-    const normalizedEmail = payload.email.trim().toLowerCase();
+    if (!existingUser) throw new ApiError(404, "User not found");
 
     const updatedUser = await this.adminRepository.updateUserProfile(userId, {
-      name: normalizedName,
-      email: normalizedEmail,
+      name: payload.name.trim(),
+      email: payload.email.trim().toLowerCase(),
     });
 
     return this.serializeUser(updatedUser);
   }
 
   async updateUserScores(userId, scores) {
-    this.validateObjectId(userId, 'Invalid user id');
+    this.validateObjectId(userId, "Invalid user id");
 
     const existingUser = await this.adminRepository.getUserById(userId);
-
-    if (!existingUser) {
-      throw new ApiError(404, 'User not found');
-    }
+    if (!existingUser) throw new ApiError(404, "User not found");
 
     return this.scoreService.replaceScores(userId, scores);
   }
 
   async blockUser(userId, isBlocked) {
-    this.validateObjectId(userId, 'Invalid user id');
+    this.validateObjectId(userId, "Invalid user id");
 
     const existingUser = await this.adminRepository.getUserById(userId);
+    if (!existingUser) throw new ApiError(404, "User not found");
 
-    if (!existingUser) {
-      throw new ApiError(404, 'User not found');
-    }
-
-    const updatedUser = await this.adminRepository.updateUserBlockState(userId, isBlocked);
+    const updatedUser = await this.adminRepository.updateUserBlockState(
+      userId,
+      isBlocked,
+    );
     return this.serializeUser(updatedUser);
   }
 
   async updateUserRole(userId, role) {
-    this.validateObjectId(userId, 'Invalid user id');
+    this.validateObjectId(userId, "Invalid user id");
 
     const existingUser = await this.adminRepository.getUserById(userId);
-
-    if (!existingUser) {
-      throw new ApiError(404, 'User not found');
-    }
+    if (!existingUser) throw new ApiError(404, "User not found");
 
     const updatedUser = await this.adminRepository.updateUserRole(userId, role);
     return this.serializeUser(updatedUser);
@@ -97,25 +91,28 @@ export class AdminService {
     const result = await this.adminRepository.listSubscriptions({
       page,
       limit,
-      status: query.status || '',
+      status: query.status || "",
     });
 
     return {
-      items: result.items.map((subscription) => this.serializeSubscription(subscription)),
+      items: result.items.map((subscription) =>
+        this.serializeSubscription(subscription),
+      ),
       pagination: this.buildPagination(page, limit, result.total),
     };
   }
 
   async updateSubscriptionStatus(subscriptionId, status) {
-    this.validateObjectId(subscriptionId, 'Invalid subscription id');
+    this.validateObjectId(subscriptionId, "Invalid subscription id");
 
-    const subscription = await this.adminRepository.getSubscriptionById(subscriptionId);
+    const subscription =
+      await this.adminRepository.getSubscriptionById(subscriptionId);
+    if (!subscription) throw new ApiError(404, "Subscription not found");
 
-    if (!subscription) {
-      throw new ApiError(404, 'Subscription not found');
-    }
-
-    const updated = await this.adminRepository.updateSubscriptionStatus(subscriptionId, status);
+    const updated = await this.adminRepository.updateSubscriptionStatus(
+      subscriptionId,
+      status,
+    );
     return this.serializeSubscription(updated);
   }
 
@@ -124,7 +121,7 @@ export class AdminService {
     const result = await this.adminRepository.listDraws({
       page,
       limit,
-      status: query.status || '',
+      status: query.status || "",
     });
 
     return {
@@ -189,6 +186,11 @@ export class AdminService {
     return this.winningService.verifyWinning(winningId);
   }
 
+  // NEW
+  async rejectWinning(winningId) {
+    return this.winningService.rejectWinning(winningId);
+  }
+
   async markWinningPaid(winningId) {
     return this.winningService.markWinningPaid(winningId);
   }
@@ -216,10 +218,12 @@ export class AdminService {
       role: user.role,
       isBlocked: Boolean(user.isBlocked),
       charityId: user.charityId ? user.charityId.toString() : null,
-      scores: Array.isArray(user.scores) ? user.scores.map((score) => ({
-        value: score.value,
-        date: score.date,
-      })) : [],
+      scores: Array.isArray(user.scores)
+        ? user.scores.map((score) => ({
+            value: score.value,
+            date: score.date,
+          }))
+        : [],
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     };
@@ -268,4 +272,3 @@ export class AdminService {
     }
   }
 }
-

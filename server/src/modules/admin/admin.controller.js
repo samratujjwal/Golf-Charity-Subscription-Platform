@@ -1,4 +1,4 @@
-import { ApiResponse } from '../../utils/ApiResponse.js';
+import { ApiResponse } from "../../utils/ApiResponse.js";
 
 export class AdminController {
   constructor(adminService) {
@@ -34,7 +34,10 @@ export class AdminController {
 
   updateUserProfile = async (req, res, next) => {
     try {
-      const result = await this.adminService.updateUserProfile(req.params.id, req.body);
+      const result = await this.adminService.updateUserProfile(
+        req.params.id,
+        req.body,
+      );
       return res.status(200).json(ApiResponse.success(result));
     } catch (error) {
       return next(error);
@@ -43,7 +46,10 @@ export class AdminController {
 
   updateUserScores = async (req, res, next) => {
     try {
-      const result = await this.adminService.updateUserScores(req.params.id, req.body.scores);
+      const result = await this.adminService.updateUserScores(
+        req.params.id,
+        req.body.scores,
+      );
       return res.status(200).json(ApiResponse.success(result));
     } catch (error) {
       return next(error);
@@ -52,7 +58,10 @@ export class AdminController {
 
   blockUser = async (req, res, next) => {
     try {
-      const result = await this.adminService.blockUser(req.params.id, req.body.isBlocked);
+      const result = await this.adminService.blockUser(
+        req.params.id,
+        req.body.isBlocked,
+      );
       return res.status(200).json(ApiResponse.success(result));
     } catch (error) {
       return next(error);
@@ -61,7 +70,10 @@ export class AdminController {
 
   changeRole = async (req, res, next) => {
     try {
-      const result = await this.adminService.updateUserRole(req.params.id, req.body.role);
+      const result = await this.adminService.updateUserRole(
+        req.params.id,
+        req.body.role,
+      );
       return res.status(200).json(ApiResponse.success(result));
     } catch (error) {
       return next(error);
@@ -79,7 +91,10 @@ export class AdminController {
 
   updateSubscriptionStatus = async (req, res, next) => {
     try {
-      const result = await this.adminService.updateSubscriptionStatus(req.params.id, req.body.status);
+      const result = await this.adminService.updateSubscriptionStatus(
+        req.params.id,
+        req.body.status,
+      );
       return res.status(200).json(ApiResponse.success(result));
     } catch (error) {
       return next(error);
@@ -169,7 +184,10 @@ export class AdminController {
 
   updateCharity = async (req, res, next) => {
     try {
-      const result = await this.adminService.updateCharity(req.params.id, req.body);
+      const result = await this.adminService.updateCharity(
+        req.params.id,
+        req.body,
+      );
       return res.status(200).json(ApiResponse.success(result));
     } catch (error) {
       return next(error);
@@ -196,7 +214,9 @@ export class AdminController {
 
   calculatePrizePool = async (req, res, next) => {
     try {
-      const result = await this.adminService.calculatePrizePool(req.params.drawId);
+      const result = await this.adminService.calculatePrizePool(
+        req.params.drawId,
+      );
       return res.status(200).json(ApiResponse.success(result));
     } catch (error) {
       return next(error);
@@ -205,7 +225,9 @@ export class AdminController {
 
   distributePrizes = async (req, res, next) => {
     try {
-      const result = await this.adminService.distributePrizes(req.params.drawId);
+      const result = await this.adminService.distributePrizes(
+        req.params.drawId,
+      );
       return res.status(200).json(ApiResponse.success(result));
     } catch (error) {
       return next(error);
@@ -215,6 +237,16 @@ export class AdminController {
   verifyWinning = async (req, res, next) => {
     try {
       const result = await this.adminService.verifyWinning(req.params.id);
+      return res.status(200).json(ApiResponse.success(result));
+    } catch (error) {
+      return next(error);
+    }
+  };
+
+  // NEW: Reject a winning — admin found proof invalid
+  rejectWinning = async (req, res, next) => {
+    try {
+      const result = await this.adminService.rejectWinning(req.params.id);
       return res.status(200).json(ApiResponse.success(result));
     } catch (error) {
       return next(error);
