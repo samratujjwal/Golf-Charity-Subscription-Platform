@@ -1,4 +1,5 @@
-﻿import { useState } from "react";
+﻿import { getErrorMessage } from "../../utils/getErrorMessage";
+import { useState } from "react";
 import DashboardCard from "../../components/ui/DashboardCard";
 import StatusBadge from "../../components/ui/StatusBadge";
 import { useAuth } from "../../hooks/useAuth";
@@ -58,7 +59,7 @@ export default function DashboardCharity() {
       await selectCharityMutation.mutateAsync(charityId);
       await refetchUser();
     } catch (err) {
-      setCharityError(err.response?.data?.error || "Unable to select charity");
+      setCharityError(getErrorMessage(err, "Unable to select charity"));
     }
   };
 
@@ -76,9 +77,7 @@ export default function DashboardCharity() {
       setPercentageSuccess(`Charity contribution updated to ${val}%.`);
       setNewPercentage("");
     } catch (err) {
-      setPercentageError(
-        err.response?.data?.error || "Unable to update percentage",
-      );
+      setPercentageError(getErrorMessage(err, "Unable to update percentage"));
     }
   };
 
@@ -104,7 +103,7 @@ export default function DashboardCharity() {
       setDonationAmount("");
       setDonationCharityId("");
     } catch (err) {
-      setDonationError(err.response?.data?.error || "Donation failed");
+      setDonationError(getErrorMessage(err, "Donation failed"));
     }
   };
 
@@ -364,8 +363,10 @@ export default function DashboardCharity() {
 
           {charitiesQuery.isError && (
             <div className="rounded-[2rem] border border-rose-200 bg-rose-50 p-6 text-rose-700">
-              {charitiesQuery.error?.response?.data?.error ||
-                "Unable to load charities."}
+              {getErrorMessage(
+                charitiesQuery.error,
+                "Unable to load charities.",
+              )}
             </div>
           )}
 

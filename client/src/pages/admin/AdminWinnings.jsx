@@ -1,3 +1,4 @@
+import { getErrorMessage } from "../../utils/getErrorMessage";
 import { useState } from "react";
 import Button from "../../components/ui/Button";
 import DashboardCard from "../../components/ui/DashboardCard";
@@ -180,8 +181,7 @@ export default function AdminWinnings() {
 
         {winningsQuery.isError && (
           <div className="py-10 text-center text-rose-300">
-            {winningsQuery.error?.response?.data?.error ||
-              "Unable to load winnings"}
+            {getErrorMessage(winningsQuery.error, "Unable to load winnings")}
           </div>
         )}
 

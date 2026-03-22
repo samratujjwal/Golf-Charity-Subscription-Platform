@@ -1,8 +1,9 @@
-import { useState } from "react";
-import Button from "../../components/ui/Button";
-import DashboardCard from "../../components/ui/DashboardCard";
-import SkeletonBlock from "../../components/ui/SkeletonBlock";
-import StatusBadge from "../../components/ui/StatusBadge";
+import { getErrorMessage } from '../../utils/getErrorMessage';
+import { useState } from 'react';
+import Button from '../../components/ui/Button';
+import DashboardCard from '../../components/ui/DashboardCard';
+import SkeletonBlock from '../../components/ui/SkeletonBlock';
+import StatusBadge from '../../components/ui/StatusBadge';
 import {
   useAdminDrawConfig,
   useAdminDraws,
@@ -11,22 +12,19 @@ import {
   useRunAdminDraw,
   useSimulateAdminDraw,
   useUpdateAdminDrawConfig,
-} from "../../hooks/useAdmin";
+} from '../../hooks/useAdmin';
 
-const DRAW_TYPES = ["random", "algorithm"];
-const STRATEGIES = ["most_frequent", "least_frequent"];
+const STRATEGIES = ['most_frequent', 'least_frequent'];
 
 export default function AdminDraws() {
-  const [error, setError] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
+  const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const [simulationResult, setSimulationResult] = useState(null);
-  const [isSimulating, setIsSimulating] = useState(false);
 
-  // Form state for draw creation
-  const [drawType, setDrawType] = useState("random");
-  const [strategy, setStrategy] = useState("most_frequent");
+  // Local draw type + strategy selection (for create / simulate)
+  const [selectedType, setSelectedType] = useState('random');
+  const [selectedStrategy, setSelectedStrategy] = useState('most_frequent');
 
-  // Hooks
   const drawsQuery = useAdminDraws({ page: 1, limit: 20 });
   const drawConfigQuery = useAdminDrawConfig();
   const updateConfigMutation = useUpdateAdminDrawConfig();
@@ -36,96 +34,83 @@ export default function AdminDraws() {
   const publishDrawMutation = usePublishAdminDraw();
 
   const draws = drawsQuery.data?.items || [];
-  const currentConfig = drawConfigQuery.data;
+  const globalConfig = drawConfigQuery.data;
 
-  const clearMessages = () => {
-    setError("");
-    setSuccessMessage("");
-  };
+  const clearMessages = () => { setError(''); setSuccessMessage(''); };
 
-  const handleUpdateConfig = async (type) => {
+  // ── handlers ────────────────────────────────────────────────
+
+  const handleSetGlobalConfig = async (type) => {
     clearMessages();
     try {
       await updateConfigMutation.mutateAsync(type);
-      setSuccessMessage(`Draw configuration updated to "${type}" mode.`);
+      setSelectedType(type);
+      setSuccessMessage(`Global draw mode set to "${type}".`);
     } catch (err) {
-      setError(
-        err.response?.data?.error || "Failed to update draw configuration",
-      );
+      setError(getErrorMessage(err, 'Failed to update draw configuration'));
     }
   };
 
-  const handleCreateDraw = async () => {
+  const handleCreate = async () => {
     clearMessages();
     setSimulationResult(null);
     try {
-      await createDrawMutation.mutateAsync({ type: drawType, strategy });
-      setSuccessMessage("Draw created successfully for the current month.");
+      await createDrawMutation.mutateAsync({ type: selectedType, strategy: selectedStrategy });
+      setSuccessMessage(`Draw created for this month using ${selectedType} mode.`);
     } catch (err) {
-      setError(err.response?.data?.error || "Failed to create draw");
+      setError(getErrorMessage(err, 'Failed to create draw'));
     }
   };
 
   const handleSimulate = async () => {
     clearMessages();
-    setIsSimulating(true);
     setSimulationResult(null);
     try {
       const response = await simulateDrawMutation.mutateAsync({
-        type: drawType,
-        strategy,
+        type: selectedType,
+        strategy: selectedStrategy,
       });
       setSimulationResult(response.data.data);
-      setSuccessMessage(
-        "Simulation complete. Results shown below — no data was saved.",
-      );
+      setSuccessMessage('Simulation complete — no data was saved.');
     } catch (err) {
-      setError(err.response?.data?.error || "Simulation failed");
-    } finally {
-      setIsSimulating(false);
+      setError(getErrorMessage(err, 'Simulation failed'));
     }
   };
 
-  const handleRunDraw = async () => {
+  const handleRun = async () => {
     clearMessages();
     try {
       await runDrawMutation.mutateAsync();
-      setSuccessMessage(
-        "Draw executed successfully. Winners have been recorded.",
-      );
+      setSuccessMessage('Draw executed. Winners have been recorded.');
     } catch (err) {
-      setError(err.response?.data?.error || "Failed to run draw");
+      setError(getErrorMessage(err, 'Failed to run draw'));
     }
   };
 
-  const handlePublishDraw = async () => {
+  const handlePublish = async () => {
     clearMessages();
     try {
       await publishDrawMutation.mutateAsync();
-      setSuccessMessage(
-        "Draw results published. Members can now view their results.",
-      );
+      setSuccessMessage('Results published. Members can now view their results.');
     } catch (err) {
-      setError(err.response?.data?.error || "Failed to publish draw");
+      setError(getErrorMessage(err, 'Failed to publish draw'));
     }
   };
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+
+      {/* ── Header ── */}
       <section className="section-hero">
         <p className="section-label">Draw Management</p>
-        <h1 className="section-title">
-          Configure, simulate, run, and publish monthly draws.
-        </h1>
+        <h1 className="section-title">Configure, simulate, run, and publish monthly draws.</h1>
         <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-400">
-          Each month one draw runs against all active subscriber scores. Use
-          simulation to preview outcomes before committing. Publishing makes
-          results visible to members.
+          Follow the four steps below each month. Simulate first to preview winners before
+          committing. Publishing makes results visible to all members.
         </p>
       </section>
 
-      {/* Feedback messages */}
+      {/* ── Feedback ── */}
       {error && (
         <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
           {error}
@@ -137,182 +122,183 @@ export default function AdminDraws() {
         </div>
       )}
 
-      {/* Draw Configuration */}
-      <DashboardCard
-        title="Draw Configuration"
-        description="Set the global draw type. This applies to all future draws unless overridden at creation time."
-      >
-        {drawConfigQuery.isLoading ? (
-          <SkeletonBlock className="h-16" />
-        ) : (
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="text-sm text-slate-400">
-              Current mode:{" "}
-              <span className="font-semibold capitalize text-white">
-                {currentConfig?.type || "random"}
-              </span>
-            </span>
-            <div className="flex gap-2">
-              {DRAW_TYPES.map((type) => (
-                <Button
-                  key={type}
-                  type="button"
-                  variant={
-                    currentConfig?.type === type ? "primary" : "secondary"
-                  }
-                  onClick={() => handleUpdateConfig(type)}
-                  disabled={updateConfigMutation.isPending}
-                >
-                  {type.charAt(0).toUpperCase() + type.slice(1)}
-                </Button>
-              ))}
-            </div>
-          </div>
-        )}
-      </DashboardCard>
+      {/* ── STEP 1 — Choose draw type ── */}
+      <DashboardCard title="Step 1 — Choose draw type">
+        <div className="space-y-5">
 
-      {/* Create & Simulate */}
-      <div className="grid gap-4 xl:grid-cols-2">
-        <DashboardCard
-          title="Draw Parameters"
-          description="Set the draw type and algorithm strategy, then create or simulate."
-        >
-          <div className="space-y-4">
-            <div>
-              <p className="mb-2 text-sm font-medium text-slate-400">
-                Draw Type
+          {/* Global config display */}
+          <div className="flex flex-wrap items-center gap-2 text-sm text-slate-400">
+            <span>Global default:</span>
+            <span className="font-semibold capitalize text-white">
+              {drawConfigQuery.isLoading ? '…' : (globalConfig?.type || 'random')}
+            </span>
+            <span className="text-slate-600">— override below for this draw only</span>
+          </div>
+
+          {/* Random / Algorithm toggle — big clear buttons */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => setSelectedType('random')}
+              className={`rounded-2xl border-2 p-5 text-left transition-all ${
+                selectedType === 'random'
+                  ? 'border-indigo-500 bg-indigo-500/10'
+                  : 'border-slate-700 bg-white/5 hover:border-slate-500'
+              }`}
+            >
+              <p className={`text-lg font-bold ${selectedType === 'random' ? 'text-indigo-300' : 'text-slate-300'}`}>
+                🎲 Random
               </p>
-              <div className="flex gap-2">
-                {DRAW_TYPES.map((type) => (
+              <p className="mt-1 text-xs leading-5 text-slate-500">
+                Five numbers drawn at random from 1–45. Standard lottery style.
+              </p>
+              {selectedType === 'random' && (
+                <span className="mt-3 inline-block rounded-full bg-indigo-500 px-3 py-0.5 text-xs font-semibold text-white">
+                  Selected
+                </span>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedType('algorithm')}
+              className={`rounded-2xl border-2 p-5 text-left transition-all ${
+                selectedType === 'algorithm'
+                  ? 'border-purple-500 bg-purple-500/10'
+                  : 'border-slate-700 bg-white/5 hover:border-slate-500'
+              }`}
+            >
+              <p className={`text-lg font-bold ${selectedType === 'algorithm' ? 'text-purple-300' : 'text-slate-300'}`}>
+                🧠 Algorithm
+              </p>
+              <p className="mt-1 text-xs leading-5 text-slate-500">
+                Numbers weighted by how frequently members have scored them.
+              </p>
+              {selectedType === 'algorithm' && (
+                <span className="mt-3 inline-block rounded-full bg-purple-500 px-3 py-0.5 text-xs font-semibold text-white">
+                  Selected
+                </span>
+              )}
+            </button>
+          </div>
+
+          {/* Algorithm strategy — only shown when algorithm is selected */}
+          {selectedType === 'algorithm' && (
+            <div>
+              <p className="mb-2 text-sm font-semibold text-slate-400">Algorithm strategy</p>
+              <div className="flex flex-wrap gap-2">
+                {STRATEGIES.map((s) => (
                   <button
-                    key={type}
+                    key={s}
                     type="button"
-                    onClick={() => setDrawType(type)}
-                    className={`rounded-xl px-4 py-2 text-sm font-medium transition-all ${
-                      drawType === type
-                        ? "bg-gradient-to-r from-indigo-500 to-purple-500 text-white"
-                        : "bg-white/5 text-slate-400 hover:text-white"
+                    onClick={() => setSelectedStrategy(s)}
+                    className={`rounded-xl px-4 py-2 text-sm font-medium capitalize transition-all ${
+                      selectedStrategy === s
+                        ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white'
+                        : 'bg-white/5 text-slate-400 hover:text-white'
                     }`}
                   >
-                    {type.charAt(0).toUpperCase() + type.slice(1)}
+                    {s.replace(/_/g, ' ')}
                   </button>
                 ))}
               </div>
+              <p className="mt-2 text-xs text-slate-500">
+                {selectedStrategy === 'most_frequent'
+                  ? 'Numbers most often scored by members are drawn — rewards common scores.'
+                  : 'Numbers least often scored are drawn — harder to match, bigger jackpot potential.'}
+              </p>
             </div>
+          )}
 
-            {drawType === "algorithm" && (
-              <div>
-                <p className="mb-2 text-sm font-medium text-slate-400">
-                  Algorithm Strategy
-                </p>
-                <div className="flex gap-2">
-                  {STRATEGIES.map((s) => (
-                    <button
-                      key={s}
-                      type="button"
-                      onClick={() => setStrategy(s)}
-                      className={`rounded-xl px-4 py-2 text-sm font-medium capitalize transition-all ${
-                        strategy === s
-                          ? "bg-gradient-to-r from-indigo-500 to-purple-500 text-white"
-                          : "bg-white/5 text-slate-400 hover:text-white"
-                      }`}
-                    >
-                      {s.replace("_", " ")}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+          {/* Save as global default */}
+          <div className="flex items-center gap-3 border-t border-slate-800 pt-4">
+            <span className="text-xs text-slate-500">Save as global default:</span>
+            <button
+              type="button"
+              onClick={() => handleSetGlobalConfig(selectedType)}
+              disabled={updateConfigMutation.isPending || globalConfig?.type === selectedType}
+              className="rounded-full border border-slate-600 px-4 py-1.5 text-xs font-semibold text-slate-300 transition hover:border-indigo-400 hover:text-indigo-300 disabled:opacity-40"
+            >
+              {updateConfigMutation.isPending ? 'Saving…' : `Set "${selectedType}" as default`}
+            </button>
+          </div>
+        </div>
+      </DashboardCard>
 
-            <div className="flex flex-wrap gap-3 pt-2">
-              <Button
-                type="button"
-                onClick={handleSimulate}
-                variant="secondary"
-                disabled={isSimulating || simulateDrawMutation.isPending}
-              >
-                {isSimulating ? "Simulating..." : "Run Simulation"}
-              </Button>
-              <Button
-                type="button"
-                onClick={handleCreateDraw}
-                disabled={createDrawMutation.isPending}
-              >
-                {createDrawMutation.isPending
-                  ? "Creating..."
-                  : "Create This Month's Draw"}
-              </Button>
-            </div>
+      {/* ── STEPS 2–4 — Create / Simulate / Run / Publish ── */}
+      <div className="grid gap-4 xl:grid-cols-2">
+
+        {/* Step 2 — Create + Simulate */}
+        <DashboardCard title="Step 2 — Create or simulate">
+          <p className="mb-4 text-sm leading-6 text-slate-400">
+            Creating generates this month's draw numbers using your chosen type. Simulating shows
+            a preview of winners without saving anything to the database.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <Button
+              type="button"
+              onClick={handleCreate}
+              disabled={createDrawMutation.isPending}
+            >
+              {createDrawMutation.isPending ? 'Creating…' : `Create draw (${selectedType})`}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleSimulate}
+              disabled={simulateDrawMutation.isPending}
+            >
+              {simulateDrawMutation.isPending ? 'Simulating…' : 'Run simulation'}
+            </Button>
           </div>
         </DashboardCard>
 
-        {/* Run & Publish Controls */}
-        <DashboardCard
-          title="Execution Controls"
-          description="Run the current month's draw against all subscriber scores, then publish results to members."
-        >
-          <div className="space-y-4">
-            <div className="surface-muted rounded-xl p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-amber-300">
-                Important Order
-              </p>
-              <ol className="mt-3 space-y-2 text-sm text-slate-400">
-                <li className="flex gap-2">
-                  <span className="font-bold text-indigo-400">1.</span>
-                  Create draw for this month (sets numbers)
-                </li>
-                <li className="flex gap-2">
-                  <span className="font-bold text-indigo-400">2.</span>
-                  Optionally simulate to preview winners
-                </li>
-                <li className="flex gap-2">
-                  <span className="font-bold text-indigo-400">3.</span>
-                  Run draw — evaluates all scores, records winners
-                </li>
-                <li className="flex gap-2">
-                  <span className="font-bold text-indigo-400">4.</span>
-                  Publish — members can now view results
-                </li>
-              </ol>
-            </div>
-
-            <div className="flex flex-wrap gap-3">
-              <Button
-                type="button"
-                onClick={handleRunDraw}
-                disabled={runDrawMutation.isPending}
-              >
-                {runDrawMutation.isPending
-                  ? "Running Draw..."
-                  : "Run Current Draw"}
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={handlePublishDraw}
-                disabled={publishDrawMutation.isPending}
-              >
-                {publishDrawMutation.isPending
-                  ? "Publishing..."
-                  : "Publish Results"}
-              </Button>
-            </div>
+        {/* Steps 3 & 4 — Run + Publish */}
+        <DashboardCard title="Steps 3 & 4 — Run then publish">
+          <p className="mb-4 text-sm leading-6 text-slate-400">
+            Running evaluates all subscriber scores against the draw numbers and records winners.
+            Publishing makes results visible to members — do this only after running.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <Button
+              type="button"
+              onClick={handleRun}
+              disabled={runDrawMutation.isPending}
+            >
+              {runDrawMutation.isPending ? 'Running…' : 'Run this month\'s draw'}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handlePublish}
+              disabled={publishDrawMutation.isPending}
+            >
+              {publishDrawMutation.isPending ? 'Publishing…' : 'Publish results'}
+            </Button>
           </div>
+
+          {/* Quick order reminder */}
+          <ol className="mt-5 space-y-1 border-t border-slate-800 pt-4 text-xs text-slate-500">
+            <li><span className="text-indigo-400 font-bold">1.</span> Pick type above → Create draw</li>
+            <li><span className="text-indigo-400 font-bold">2.</span> Optionally simulate to preview</li>
+            <li><span className="text-indigo-400 font-bold">3.</span> Run draw — records winners</li>
+            <li><span className="text-indigo-400 font-bold">4.</span> Publish — members see results</li>
+          </ol>
         </DashboardCard>
       </div>
 
-      {/* Simulation Results */}
+      {/* ── Simulation Results ── */}
       {simulationResult && (
         <DashboardCard
           title="Simulation Results"
-          description="These are preview results only. No data was saved to the database."
+          badge={<StatusBadge>Preview only — not saved</StatusBadge>}
+          description="These numbers and winners are a preview. Nothing was written to the database."
         >
-          <div className="space-y-4">
+          <div className="space-y-5">
+            {/* Stats row */}
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="surface-muted rounded-xl p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
-                  Draw Numbers
-                </p>
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Draw numbers</p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {simulationResult.draw?.numbers?.map((num) => (
                     <span
@@ -325,45 +311,30 @@ export default function AdminDraws() {
                 </div>
               </div>
               <div className="surface-muted rounded-xl p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
-                  Total Participants
-                </p>
-                <p className="mt-3 text-3xl font-semibold text-white">
-                  {simulationResult.totalParticipants}
-                </p>
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Participants</p>
+                <p className="mt-3 text-3xl font-semibold text-white">{simulationResult.totalParticipants}</p>
               </div>
               <div className="surface-muted rounded-xl p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
-                  Predicted Winners
-                </p>
-                <p className="mt-3 text-3xl font-semibold text-white">
-                  {simulationResult.totalWinners}
-                </p>
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Predicted winners</p>
+                <p className="mt-3 text-3xl font-semibold text-white">{simulationResult.totalWinners}</p>
               </div>
             </div>
 
-            {/* Match Distribution */}
+            {/* Match distribution */}
             {simulationResult.matchDistribution && (
               <div>
-                <p className="mb-3 text-sm font-semibold text-slate-400">
-                  Match Distribution
-                </p>
+                <p className="mb-3 text-sm font-semibold text-slate-400">Match distribution</p>
                 <div className="flex flex-wrap gap-3">
-                  {Object.entries(simulationResult.matchDistribution).map(
-                    ([matches, count]) => (
-                      <div
-                        key={matches}
-                        className="surface-muted rounded-xl px-4 py-3 text-center"
-                      >
-                        <p className="text-xs text-slate-500">
-                          {matches} matches
-                        </p>
-                        <p className="mt-1 text-xl font-semibold text-white">
+                  {Object.entries(simulationResult.matchDistribution)
+                    .sort(([a], [b]) => Number(b) - Number(a))
+                    .map(([matches, count]) => (
+                      <div key={matches} className="surface-muted rounded-xl px-4 py-3 text-center">
+                        <p className="text-xs text-slate-500">{matches} match{Number(matches) !== 1 ? 'es' : ''}</p>
+                        <p className={`mt-1 text-xl font-semibold ${Number(matches) >= 3 ? 'text-emerald-300' : 'text-white'}`}>
                           {count}
                         </p>
                       </div>
-                    ),
-                  )}
+                    ))}
                 </div>
               </div>
             )}
@@ -371,28 +342,22 @@ export default function AdminDraws() {
             {/* Predicted winners table */}
             {simulationResult.predictedWinners?.length > 0 && (
               <div>
-                <p className="mb-3 text-sm font-semibold text-slate-400">
-                  Predicted Winners
-                </p>
+                <p className="mb-3 text-sm font-semibold text-slate-400">Predicted winners</p>
                 <div className="table-shell">
                   <table>
                     <thead>
                       <tr className="text-slate-500">
                         <th className="font-semibold">Member</th>
-                        <th className="font-semibold">Matches</th>
-                        <th className="font-semibold">Matched Numbers</th>
+                        <th className="font-semibold">Tier</th>
+                        <th className="font-semibold">Matched numbers</th>
                       </tr>
                     </thead>
                     <tbody>
                       {simulationResult.predictedWinners.map((winner, idx) => (
                         <tr key={idx} className="text-slate-300">
                           <td>
-                            <p className="font-semibold text-white">
-                              {winner.user?.name || "Unknown"}
-                            </p>
-                            <p className="text-slate-500">
-                              {winner.user?.email}
-                            </p>
+                            <p className="font-semibold text-white">{winner.user?.name || 'Unknown'}</p>
+                            <p className="text-slate-500 text-sm">{winner.user?.email}</p>
                           </td>
                           <td>
                             <StatusBadge>{`${winner.matchCount} matches`}</StatusBadge>
@@ -419,18 +384,29 @@ export default function AdminDraws() {
 
             {simulationResult.totalWinners === 0 && (
               <div className="surface-muted rounded-xl px-4 py-6 text-center text-sm text-slate-400">
-                No predicted winners with these draw numbers. The jackpot would
-                roll over to next month.
+                No predicted winners with these numbers. The jackpot would roll over to next month.
               </div>
             )}
+
+            {/* Proceed prompt */}
+            <div className="flex flex-wrap items-center gap-3 border-t border-slate-800 pt-4">
+              <p className="text-sm text-slate-400">Happy with the simulation? Create the draw next.</p>
+              <Button
+                type="button"
+                onClick={handleCreate}
+                disabled={createDrawMutation.isPending}
+              >
+                {createDrawMutation.isPending ? 'Creating…' : `Create draw (${selectedType})`}
+              </Button>
+            </div>
           </div>
         </DashboardCard>
       )}
 
-      {/* Draw History */}
+      {/* ── Draw History ── */}
       <DashboardCard
         title="Draw History"
-        description="All draws recorded in the system, ordered most recent first."
+        description="All draws recorded in the system, most recent first."
       >
         {drawsQuery.isLoading && (
           <div className="space-y-3">
@@ -439,17 +415,19 @@ export default function AdminDraws() {
             <SkeletonBlock className="h-14" />
           </div>
         )}
+
         {drawsQuery.isError && (
           <div className="py-10 text-center text-rose-300">
-            {drawsQuery.error?.response?.data?.error || "Unable to load draws"}
+            {getErrorMessage(drawsQuery.error, 'Unable to load draws')}
           </div>
         )}
+
         {!drawsQuery.isLoading && !drawsQuery.isError && draws.length === 0 && (
           <div className="surface-muted rounded-xl px-4 py-10 text-center text-sm text-slate-400">
-            No draws created yet. Use the controls above to create the first
-            draw.
+            No draws created yet. Use the controls above to create the first draw.
           </div>
         )}
+
         {!drawsQuery.isLoading && !drawsQuery.isError && draws.length > 0 && (
           <div className="table-shell">
             <table>
@@ -465,9 +443,12 @@ export default function AdminDraws() {
               </thead>
               <tbody>
                 {draws.map((draw) => (
-                  <tr key={draw.id} className="align-top text-slate-300">
+                  <tr key={draw.id} className="align-middle text-slate-300">
                     <td className="font-semibold text-white">
-                      {draw.month}/{draw.year}
+                      {new Date(draw.year, draw.month - 1).toLocaleString('default', {
+                        month: 'long',
+                        year: 'numeric',
+                      })}
                     </td>
                     <td>
                       <div className="flex flex-wrap gap-1">
@@ -486,9 +467,7 @@ export default function AdminDraws() {
                       <StatusBadge status={draw.status} />
                     </td>
                     <td className="text-slate-500">
-                      {draw.publishedAt
-                        ? new Date(draw.publishedAt).toLocaleDateString()
-                        : "—"}
+                      {draw.publishedAt ? new Date(draw.publishedAt).toLocaleDateString() : '—'}
                     </td>
                     <td className="text-slate-500">
                       {new Date(draw.createdAt).toLocaleDateString()}

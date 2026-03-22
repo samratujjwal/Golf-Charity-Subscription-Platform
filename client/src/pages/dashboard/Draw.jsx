@@ -1,17 +1,18 @@
-import { Link } from "@tanstack/react-router";
-import DashboardCard from "../../components/ui/DashboardCard";
-import StatusBadge from "../../components/ui/StatusBadge";
-import { useLatestDraw } from "../../hooks/useDraw";
-import { useMyWinnings } from "../../hooks/useWinnings";
-import { useScores } from "../../hooks/useScores";
+import { getErrorMessage } from '../../utils/getErrorMessage';
+import { Link } from '@tanstack/react-router';
+import DashboardCard from '../../components/ui/DashboardCard';
+import StatusBadge from '../../components/ui/StatusBadge';
+import { useLatestDraw } from '../../hooks/useDraw';
+import { useMyWinnings } from '../../hooks/useWinnings';
+import { useScores } from '../../hooks/useScores';
 
 function DrawNumber({ number, matched }) {
   return (
     <span
       className={`inline-flex h-11 w-11 items-center justify-center rounded-full text-sm font-bold transition ${
         matched
-          ? "border-2 border-emerald-400 bg-emerald-500/20 text-emerald-300 shadow-[0_0_16px_rgba(52,211,153,0.4)]"
-          : "border border-slate-700 bg-slate-900/60 text-slate-400"
+          ? 'border-2 border-emerald-400 bg-emerald-500/20 text-emerald-300 shadow-[0_0_16px_rgba(52,211,153,0.4)]'
+          : 'border border-slate-700 bg-slate-900/60 text-slate-400'
       }`}
     >
       {number}
@@ -31,15 +32,12 @@ export default function DashboardDraw() {
 
   // Participation summary: count unique draws the user has a winning entry for
   const drawsEntered = winnings.length;
-  const totalPrizeWon = winnings.reduce(
-    (sum, w) => sum + Number(w.prizeAmount || 0),
-    0,
-  );
-  const pendingWinnings = winnings.filter((w) => w.status === "pending").length;
+  const totalPrizeWon = winnings.reduce((sum, w) => sum + Number(w.prizeAmount || 0), 0);
+  const pendingWinnings = winnings.filter((w) => w.status === 'pending').length;
 
   // Month name helper
   const monthName = (month) =>
-    new Date(2000, month - 1, 1).toLocaleString("default", { month: "long" });
+    new Date(2000, month - 1, 1).toLocaleString('default', { month: 'long' });
 
   if (latestDrawQuery.isLoading) {
     return (
@@ -53,15 +51,12 @@ export default function DashboardDraw() {
     <div className="space-y-6">
       {/* Hero */}
       <section className="rounded-[2rem] border border-white/50 bg-[radial-gradient(circle_at_top_right,rgba(99,102,241,0.16),transparent_28%),linear-gradient(135deg,rgba(255,255,255,0.96),rgba(248,250,252,0.9))] p-8 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur">
-        <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">
-          Monthly Draw
-        </p>
+        <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">Monthly Draw</p>
         <h2 className="mt-3 text-4xl font-semibold tracking-tight text-slate-950">
           Your draw participation & results.
         </h2>
         <p className="mt-4 max-w-2xl text-base leading-8 text-slate-600">
-          Each month your five Stableford scores are matched against the draw
-          numbers. Match 3 or more to win a share of the prize pool.
+          Each month your five Stableford scores are matched against the draw numbers. Match 3 or more to win a share of the prize pool.
         </p>
       </section>
 
@@ -92,8 +87,7 @@ export default function DashboardDraw() {
       {/* Latest draw results */}
       {latestDrawQuery.isError && (
         <div className="rounded-[2rem] border border-rose-200 bg-rose-50 p-6 text-rose-700">
-          {latestDrawQuery.error?.response?.data?.error ||
-            "Unable to load draw data."}
+          {getErrorMessage(latestDrawQuery.error, 'Unable to load draw data.')}
         </div>
       )}
 
@@ -109,11 +103,7 @@ export default function DashboardDraw() {
           {/* Draw numbers + match result */}
           <DashboardCard
             title={`${monthName(draw.month)} ${draw.year} Draw`}
-            badge={
-              <StatusBadge status={draw.status}>
-                {draw.publishedAt ? "Published" : draw.status}
-              </StatusBadge>
-            }
+            badge={<StatusBadge status={draw.status}>{draw.publishedAt ? 'Published' : draw.status}</StatusBadge>}
             description="The five numbers drawn for this month. Matched numbers are highlighted."
           >
             <div className="space-y-6">
@@ -141,21 +131,17 @@ export default function DashboardDraw() {
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {scores.map((score, idx) => {
-                      const isMatch = userResult?.matchedNumbers?.includes(
-                        score.value,
-                      );
+                      const isMatch = userResult?.matchedNumbers?.includes(score.value);
                       return (
                         <div
                           key={idx}
                           className={`rounded-xl px-3 py-2 text-center ${
                             isMatch
-                              ? "border border-emerald-400/40 bg-emerald-500/10"
-                              : "border border-slate-700 bg-slate-900/40"
+                              ? 'border border-emerald-400/40 bg-emerald-500/10'
+                              : 'border border-slate-700 bg-slate-900/40'
                           }`}
                         >
-                          <p
-                            className={`text-lg font-bold ${isMatch ? "text-emerald-300" : "text-slate-300"}`}
-                          >
+                          <p className={`text-lg font-bold ${isMatch ? 'text-emerald-300' : 'text-slate-300'}`}>
                             {score.value}
                           </p>
                           <p className="text-[10px] text-slate-500">
@@ -170,13 +156,10 @@ export default function DashboardDraw() {
 
               {scores.length === 0 && (
                 <div className="rounded-[1.5rem] border border-dashed border-slate-700 bg-slate-900/30 px-4 py-6 text-center text-sm text-slate-400">
-                  No scores submitted yet.{" "}
-                  <Link
-                    to="/dashboard/scores"
-                    className="font-semibold text-indigo-300 hover:text-indigo-200"
-                  >
+                  No scores submitted yet.{' '}
+                  <Link to="/dashboard/scores" className="font-semibold text-indigo-300 hover:text-indigo-200">
                     Add your scores
-                  </Link>{" "}
+                  </Link>{' '}
                   to participate in next month's draw.
                 </div>
               )}
@@ -195,26 +178,25 @@ export default function DashboardDraw() {
                   <div
                     className={`flex items-center gap-4 rounded-2xl p-5 ${
                       userResult.isWinner
-                        ? "border border-emerald-400/30 bg-emerald-500/10"
-                        : "border border-slate-700 bg-slate-900/40"
+                        ? 'border border-emerald-400/30 bg-emerald-500/10'
+                        : 'border border-slate-700 bg-slate-900/40'
                     }`}
                   >
                     <div
                       className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-full text-2xl font-bold ${
                         userResult.isWinner
-                          ? "bg-emerald-500/20 text-emerald-300"
-                          : "bg-slate-800 text-slate-400"
+                          ? 'bg-emerald-500/20 text-emerald-300'
+                          : 'bg-slate-800 text-slate-400'
                       }`}
                     >
                       {userResult.matchCount}
                     </div>
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
-                        {userResult.isWinner ? "🏆 Winner!" : "Matches"}
+                        {userResult.isWinner ? '🏆 Winner!' : 'Matches'}
                       </p>
                       <p className="mt-1 text-lg font-semibold text-white">
-                        {userResult.matchCount} number
-                        {userResult.matchCount !== 1 ? "s" : ""} matched
+                        {userResult.matchCount} number{userResult.matchCount !== 1 ? 's' : ''} matched
                       </p>
                       {!userResult.isWinner && userResult.matchCount > 0 && (
                         <p className="mt-1 text-sm text-slate-500">
@@ -262,13 +244,10 @@ export default function DashboardDraw() {
                           </span>
                         )}
                       </div>
-                      {userResult.winningStatus === "pending" && (
+                      {userResult.winningStatus === 'pending' && (
                         <p className="mt-2 text-sm text-slate-400">
-                          Upload your proof screenshot in the{" "}
-                          <Link
-                            to="/dashboard/winnings"
-                            className="font-semibold text-indigo-300 hover:text-indigo-200"
-                          >
+                          Upload your proof screenshot in the{' '}
+                          <Link to="/dashboard/winnings" className="font-semibold text-indigo-300 hover:text-indigo-200">
                             Winnings tab
                           </Link>
                           .
@@ -284,11 +263,8 @@ export default function DashboardDraw() {
                 description="Draw results are calculated after the monthly draw is run and published."
               >
                 <p className="text-sm text-slate-400">
-                  Make sure your scores are up to date before the draw runs.{" "}
-                  <Link
-                    to="/dashboard/scores"
-                    className="font-semibold text-indigo-300 hover:text-indigo-200"
-                  >
+                  Make sure your scores are up to date before the draw runs.{' '}
+                  <Link to="/dashboard/scores" className="font-semibold text-indigo-300 hover:text-indigo-200">
                     Manage scores →
                   </Link>
                 </p>
@@ -326,11 +302,10 @@ export default function DashboardDraw() {
 
               <div className="mt-4 border-t border-slate-800 pt-4">
                 <p className="text-xs text-slate-500 leading-6">
-                  Prize tiers:{" "}
-                  <span className="text-white">5 matches = 40%</span> ·{" "}
-                  <span className="text-white">4 matches = 35%</span> ·{" "}
-                  <span className="text-white">3 matches = 25%</span> of the
-                  prize pool. Jackpot rolls over if no 5-match winner.
+                  Prize tiers: <span className="text-white">5 matches = 40%</span> ·{' '}
+                  <span className="text-white">4 matches = 35%</span> ·{' '}
+                  <span className="text-white">3 matches = 25%</span> of the prize pool.
+                  Jackpot rolls over if no 5-match winner.
                 </p>
               </div>
             </DashboardCard>
@@ -360,7 +335,7 @@ export default function DashboardDraw() {
                     <td className="font-semibold text-white">
                       {winning.draw
                         ? `${monthName(winning.draw.month)} ${winning.draw.year}`
-                        : "Unknown"}
+                        : 'Unknown'}
                     </td>
                     <td>
                       <StatusBadge>{`${winning.matchCount} matches`}</StatusBadge>
